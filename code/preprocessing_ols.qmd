@@ -1,0 +1,139 @@
+---
+title: "Prepocessing for ols"
+format: html
+---
+
+# Create a csv file for OLS modeling 
+
+```{python}
+import pandas as pd
+import numpy as np
+from pathlib import Path
+
+# ============================================================
+# Paths
+# ============================================================
+MASTER_DIR = Path(r"data\derieved-data")
+DATA_DIR   = Path(r"data\raw-data")
+
+MASTER_PATH = MASTER_DIR / "master_state_merged.csv"
+
+INC_PATH = DATA_DIR / "Household Income.csv"
+EMP_PATH = DATA_DIR / "Employment Status.csv"
+HH2_PATH = DATA_DIR / "Household Type 2.csv"
+HH_PATH  = DATA_DIR / "Houshold Type.csv"
+POP_PATH = DATA_DIR / "Population Type.csv"
+
+# ============================================================
+# Load master
+# ============================================================
+master = pd.read_csv(MASTER_PATH)
+master["state_name"] = master["state_name"].astype(str).str.strip().str.replace(r"\s+", " ", regex=True)
+
+# numeric cleaner (handles commas, %, blanks, ACS symbols)
+clean = lambda s: pd.to_numeric(
+    pd.Series(s).astype(str)
+      .str.replace(",", "", regex=False)
+      .str.replace("%", "", regex=False)
+      .str.strip()
+      .replace({"(X)": np.nan, "*****": np.nan, "--": np.nan, "nan": np.nan, "": np.nan}),
+    errors="coerce"
+).values
+
+# ============================================================
+# 1 Median household income (row: Households)
+# ============================================================
+inc = pd.read_csv(INC_PATH)
+inc_cols = [c for c in inc.columns if str(c).endswith("!!Median income (dollars)!!Estimate")]
+inc_row = inc.loc[1, inc_cols]  # row 1 = Households
+
+inc_df = pd.DataFrame({
+    "state_name": [c.split("!!")[0] for c in inc_cols],
+    "median_hh_income": clean(inc_row.values)
+})
+inc_df["state_name"] = inc_df["state_name"].astype(str).str.strip().str.replace(r"\s+", " ", regex=True)
+
+# ============================================================
+# 2 Unemployment rate (row: Population 16 years and over)
+# ============================================================
+emp = pd.read_csv(EMP_PATH)
+emp_cols = [c for c in emp.columns if str(c).endswith("!!Unemployment rate!!Estimate")]
+emp_row = emp.loc[0, emp_cols]  # row 0 = Population 16+
+
+emp_df = pd.DataFrame({
+    "state_name": [c.split("!!")[0] for c in emp_cols],
+    "unemployment_rate": clean(emp_row.values)  # percent points
+})
+emp_df["state_name"] = emp_df["state_name"].astype(str).str.strip().str.replace(r"\s+", " ", regex=True)
+
+# ============================================================
+# 3 SNAP households percent (row: Total/Households)
+# ============================================================
+hh2 = pd.read_csv(HH2_PATH)
+snap_cols = [c for c in hh2.columns if str(c).endswith("!!Percent households receiving food stamps/SNAP!!Estimate")]
+snap_row = hh2.loc[0, snap_cols]  # row 0 is overall
+
+snap_df = pd.DataFrame({
+    "state_name": [c.split("!!")[0] for c in snap_cols],
+    "snap_household_pct": clean(snap_row.values)  # percent points
+})
+snap_df["state_name"] = snap_df["state_name"].astype(str).str.strip().str.replace(r"\s+", " ", regex=True)
+
+# ============================================================
+# 4 Single-parent proxy = (Male no spouse) + (Female no spouse)  [percent]
+#    (Note: file does NOT contain "with children" breakdown)
+# ============================================================
+hh = pd.read_csv(HH_PATH)
+hhlab = hh["Label (Grouping)"].astype(str)
+
+male_idx = hhlab[hhlab.str.contains("Male householder, no spouse/partner present", regex=False)].index[0]
+fem_idx  = hhlab[hhlab.str.contains("Female householder, no spouse/partner present", regex=False)].index[0]
+
+pct_cols = [c for c in hh.columns if str(c).endswith("!!Percent")]
+male_row = hh.loc[male_idx, pct_cols]
+fem_row  = hh.loc[fem_idx, pct_cols]
+
+sp_df = pd.DataFrame({
+    "state_name": [c.split("!!")[0] for c in pct_cols],
+    "single_parent_pct": clean(male_row.values) + clean(fem_row.values)  # percent points
+})
+sp_df["state_name"] = sp_df["state_name"].astype(str).str.strip().str.replace(r"\s+", " ", regex=True)
+
+# ============================================================
+# 5 Race/Ethnicity: % Black (African American) and % Hispanic  [percent]
+# ============================================================
+pop = pd.read_csv(POP_PATH)
+poplab = pop["Label (Grouping)"].astype(str)
+
+# Hispanic row
+his_idx = poplab[poplab.str.contains("Hispanic or Latino (of any race)", regex=False)].index[0]
+# Black row: use "Black or African American alone" if present; else fallback to "Black or African American"
+blk_candidates = poplab[poplab.str.contains("Black or African American alone", regex=False)]
+blk_idx = blk_candidates.index[0] if len(blk_candidates) > 0 else poplab[poplab.str.contains("Black or African American", regex=False)].index[0]
+
+pop_pct_cols = [c for c in pop.columns if str(c).endswith("!!Percent")]
+
+his_row = pop.loc[his_idx, pop_pct_cols]
+blk_row = pop.loc[blk_idx, pop_pct_cols]
+
+race_df = pd.DataFrame({
+    "state_name": [c.split("!!")[0] for c in pop_pct_cols],
+    "pct_hispanic": clean(his_row.values),
+    "pct_black": clean(blk_row.values)
+})
+race_df["state_name"] = race_df["state_name"].astype(str).str.strip().str.replace(r"\s+", " ", regex=True)
+
+# ============================================================
+# Merge controls into master
+# ============================================================
+master = master.merge(inc_df, on="state_name", how="left")
+master = master.merge(emp_df, on="state_name", how="left")
+master = master.merge(snap_df, on="state_name", how="left")
+master = master.merge(sp_df, on="state_name", how="left")
+master = master.merge(race_df, on="state_name", how="left")
+
+# Save merged master
+out_path = MASTER_DIR / "master_state_with_controls.csv"
+master.to_csv(out_path, index=False)
+print("\nSaved:", out_path)
+```
