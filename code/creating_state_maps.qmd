@@ -1,0 +1,201 @@
+---
+title: "State Maps "
+format: html
+---
+
+# Creating maps
+## 1 mapping policies (cep rate and NSLP spending vs child well-being variables)
+
+```{python}
+import pandas as pd
+import numpy as np
+import geopandas as gpd
+import matplotlib.pyplot as plt
+from pathlib import Path
+from matplotlib.cm import ScalarMappable
+from matplotlib.colors import Normalize
+import os
+
+# -----------------------
+# Paths
+# -----------------------
+MASTER_DIR = Path(r"..\data\derived-data")
+SHP_DIR    = Path(r"..\data\raw-data\shp_file\state")
+
+MASTER_PATH = MASTER_DIR / "master_state_with_controls.csv"
+SHP_PATH    = SHP_DIR / "cb_2018_us_state_500k.shp"
+
+# -----------------------
+# Columns
+# -----------------------
+COL_CEP   = "cep_rate_school"
+COL_DOL   = "nslp_total_dollars_per_school_age"
+COL_POV   = "poverty_rate_children"
+COL_INSEC = "child_food_insec_rate"
+COL_INSUF = "food_insufficiency_weighted"
+
+# -----------------------
+# Load + merge
+# -----------------------
+master = pd.read_csv(MASTER_PATH)
+master["state_name"] = master["state_name"].astype(str).str.strip().str.replace(r"\s+", " ", regex=True)
+
+states = gpd.read_file(SHP_PATH)
+states["state_name"] = states["NAME"].astype(str).str.strip().str.replace(r"\s+", " ", regex=True)
+
+gdf = states.merge(master, on="state_name", how="left")
+
+# Keep 50 + DC
+keep = [
+    "Alabama","Alaska","Arizona","Arkansas","California","Colorado","Connecticut","Delaware",
+    "District of Columbia","Florida","Georgia","Hawaii","Idaho","Illinois","Indiana","Iowa",
+    "Kansas","Kentucky","Louisiana","Maine","Maryland","Massachusetts","Michigan","Minnesota",
+    "Mississippi","Missouri","Montana","Nebraska","Nevada","New Hampshire","New Jersey",
+    "New Mexico","New York","North Carolina","North Dakota","Ohio","Oklahoma","Oregon",
+    "Pennsylvania","Rhode Island","South Carolina","South Dakota","Tennessee","Texas","Utah",
+    "Vermont","Virginia","Washington","West Virginia","Wisconsin","Wyoming"
+]
+gdf = gdf[gdf["state_name"].isin(keep)].copy()
+
+# Make numeric
+for c in [COL_CEP, COL_DOL, COL_POV, COL_INSEC, COL_INSUF]:
+    gdf[c] = pd.to_numeric(gdf[c], errors="coerce")
+# Divide child poverty rate by 100
+gdf[COL_POV] = gdf[COL_POV] / 100
+
+# -----------------------
+# IMPORTANT: CONUS only => big maps
+# -----------------------
+gdf_conus = gdf[~gdf["state_name"].isin(["Alaska", "Hawaii"])].copy()
+
+# Label source: prefer STUSPS if exists, else state_name
+label_col = "STUSPS" if "STUSPS" in gdf_conus.columns else "state_name"
+
+# ------------------------
+# Set the place where outputs are stored
+# ------------------------
+OUTPUT_DIR = "../figures/maps"
+os.makedirs(OUTPUT_DIR, exist_ok=True)
+
+# -----------------------
+# Binning + plotting helper (no big legend box)
+# -----------------------
+k = 5  # quantile bins
+
+def add_state_labels(ax, g):
+    # representative_point is safer than centroid (keeps point inside polygon)
+    pts = g.geometry.representative_point()
+    for x, y, lab in zip(pts.x, pts.y, g[label_col].astype(str)):
+        ax.text(x, y, lab, fontsize=6, ha="center", va="center")
+
+def plot_pair_big(left_col, right_col, suptitle, left_title, right_title, left_cmap, right_cmap):
+    # Quantile bins for each variable (intervals used as colorbar ticklabels)
+    left_bin = pd.qcut(gdf_conus[left_col], q=k, duplicates="drop")
+    right_bin = pd.qcut(gdf_conus[right_col], q=k, duplicates="drop")
+
+    left_codes = left_bin.cat.codes.replace(-1, np.nan)
+    right_codes = right_bin.cat.codes.replace(-1, np.nan)
+
+    # Interval labels
+    left_labels = [
+        f"{iv.left:.1f}–{iv.right:.1f}"
+        for iv in left_bin.cat.categories 
+    ]
+    right_labels = [
+        f"{iv.left:.1f}–{iv.right:.1f}"
+        for iv in right_bin.cat.categories
+    ]
+
+    # Use code range for colormap
+    left_norm = Normalize(vmin=0, vmax=len(left_labels)-1)
+    right_norm = Normalize(vmin=0, vmax=len(right_labels)-1)
+
+    fig, axs = plt.subplots(1, 2, figsize=(22, 10), constrained_layout=True)
+
+    # ----- LEFT MAP
+    tmp = gdf_conus.copy()
+    tmp["_z"] = left_codes
+    tmp.plot(
+        column="_z", ax=axs[0], cmap=left_cmap, norm=left_norm,
+        edgecolor="white", linewidth=0.5,
+        missing_kwds={"color":"lightgrey"}
+    )
+    axs[0].set_title(left_title, fontsize=14)
+    axs[0].set_axis_off()
+    add_state_labels(axs[0], gdf_conus)
+
+    sm_left = ScalarMappable(norm=left_norm, cmap=left_cmap)
+    sm_left.set_array([])
+    cbar_left = fig.colorbar(sm_left, ax=axs[0], fraction=0.035, pad=0.01)
+    cbar_left.set_ticks(range(len(left_labels)))
+    cbar_left.set_ticklabels(left_labels)
+    cbar_left.ax.tick_params(labelsize=8)
+    cbar_left.set_label(f"{left_col} (quantile bins)", fontsize=12)
+
+    # ----- RIGHT MAP
+    tmp = gdf_conus.copy()
+    tmp["_z"] = right_codes
+    tmp.plot(
+        column="_z", ax=axs[1], cmap=right_cmap, norm=right_norm,
+        edgecolor="white", linewidth=0.5,
+        missing_kwds={"color":"lightgrey"}
+    )
+    axs[1].set_title(right_title, fontsize=14)
+    axs[1].set_axis_off()
+    add_state_labels(axs[1], gdf_conus)
+
+    sm_right = ScalarMappable(norm=right_norm, cmap=right_cmap)
+    sm_right.set_array([])
+    cbar_right = fig.colorbar(sm_right, ax=axs[1], fraction=0.035, pad=0.01)
+    cbar_right.set_ticks(range(len(right_labels)))
+    cbar_right.set_ticklabels(right_labels)
+    cbar_right.ax.tick_params(labelsize=6)
+    cbar_right.set_label(f"{right_col} (quantile bins)", fontsize=12)
+
+    fig.suptitle(suptitle, fontsize=18)
+
+
+    # create file names
+    filename = suptitle.replace(" ", "_").replace("(", "").replace(")", "") + ".png"
+
+    # save the output
+    path = os.path.join(OUTPUT_DIR, filename)
+    plt.savefig(path, dpi=300, bbox_inches="tight")
+
+    plt.show()
+
+# -----------------------
+# 4 big pair-figures
+# -----------------------
+plot_pair_big(COL_CEP, COL_POV,
+              "CEP vs Child Poverty (CONUS, big maps + labels)",
+              "CEP participation rate (%)", "Child poverty rate (%)",
+              "Blues", "Reds")
+
+plot_pair_big(COL_CEP, COL_INSEC,
+              "CEP vs Child Food Insecurity (CONUS, big maps + labels)",
+              "CEP participation rate", "Child food insecurity rate",
+              "Blues", "Reds")
+
+plot_pair_big(COL_CEP, COL_INSUF,
+              "CEP vs Child Food Insufficiency (CONUS, big maps + labels)",
+              "CEP participation rate", "Child food insecurity rate",
+              "Blues", "Reds")
+
+plot_pair_big(COL_DOL, COL_POV,
+              "NSLP $ per School-Age vs Child Poverty (CONUS, big maps + labels)",
+              "NSLP $ per school-age", "Child poverty rate",
+              "Purples", "Reds")
+
+plot_pair_big(COL_DOL, COL_INSEC,
+              "NSLP $ per School-Age vs Child Food Insecurity (CONUS, big maps + labels)",
+              "NSLP $ per school-age", "Child food insecurity rate",
+              "Purples", "Reds")
+
+plot_pair_big(COL_DOL, COL_INSUF,
+              "NSLP $ per School-Age vs Child Food Insufficiency (CONUS, big maps + labels)",
+              "NSLP $ per school-age", "Child food insecurity rate",
+              "Purples", "Reds")
+```
+
+## 2 voting maps
