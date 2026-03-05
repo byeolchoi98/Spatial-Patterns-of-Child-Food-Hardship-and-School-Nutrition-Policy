@@ -1,4 +1,4 @@
-name: fire_analysis
+name: nslp_analysis
 channels:
   - conda-forge
 dependencies:
@@ -7,3 +7,12 @@ dependencies:
   - geopandas
   - matplotlib
   - shapely
+  - geopandas
+  - altair
+  - json
+  - streamlit
+  - seaborn
+  - numpy
+  - os
+  - pathlib
+  - statsmodels

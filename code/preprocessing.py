@@ -554,7 +554,7 @@ vote_state_2024["dem_margin"] = (
     vote_state_2024["DEMOCRAT"] - vote_state_2024["REPUBLICAN"]
 ) / vote_state_2024["total_votes"]  
 
-vote_county_2024.to_csv(r"..\data\raw-data\vote_county_2024.csv", index=False)
+vote_county_2024.to_csv(r"..\data\derived-data\vote_county_2024.csv", index=False)
 #vote_state_2024.to_csv("vote_state_2024.csv", index=False)
 
 ## Child poverty and CEP rate
