@@ -86,6 +86,8 @@ def ensure_county_shapefile(local_shp_path: Path, cache_dir: Path) -> Path:
 
     return shp_path
 
+CENSUS_COUNTY_ZIP_URL = "https://www2.census.gov/geo/tiger/TIGER2024/COUNTY/tl_2024_us_county.zip"
+
 COUNTY_SHP_LOCAL = RAW_DIR / "shp_file" / "county" / "tl_2025_us_county.shp"
 
 GIS_CACHE_DIR = REPO_DIR / ".cache_gis"
@@ -94,8 +96,6 @@ COUNTY_SHP_PATH = ensure_county_shapefile(
     COUNTY_SHP_LOCAL,
     GIS_CACHE_DIR
 )
-
-CENSUS_COUNTY_ZIP_URL = "https://www2.census.gov/geo/tiger/TIGER2024/COUNTY/tl_2024_us_county.zip"
 
 
 def pick_csv(fname: str) -> Path:
