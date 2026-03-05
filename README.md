@@ -72,6 +72,11 @@ figures/
   plot1_png # state level visualization
   plot2_png # county level viulaization
 writeup/
+  final_project.qmd
+  final_project_appendix.qmd # For OLS
+  final_project.pdf
+  final_project.html
+  final_project_files
   
   
 ```
