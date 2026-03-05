@@ -2,8 +2,8 @@ streamlit
 pandas
 numpy
 geopandas
-pyogrio
-shapely
 matplotlib
 altair
 statsmodels
+zipfile
+requests
