@@ -15,6 +15,9 @@ conda activate nslp_analysis
 ```
 data/
   raw-data/           # Raw data files
+    crosswalk/        # needs for MO cep data cleaning 
+      ccd_sch.csv 
+      EDGE_GEOCODE.xslx
     shp_files/
       state/
         cb_2018_us_state_500k.cpg
@@ -28,14 +31,54 @@ data/
         tl_2025_us_county.prj
         tl_2025_us_county.shp
         tl_2025_us_county.shx
-    fire.csv          # Historical fire perimeter data
-    canadian_cpi.csv  # Canadian Consumer Price Index data
-  derived-data/       # Filtered data and output plots
-    fire_filtered.gpkg  # Fire data filtered to post-2015
-    cpi_filtered.csv    # CPI data filtered to 2020 onwards
+    cash_payment_nslp.xlsx
+    cep_2024.xlsx  # CEP participation rate in 2024
+    child_poverty_rate_2024.csv # child poverty rate in 2024
+    commodity_cost.xlsx
+    Employment_Status.csv
+    Food Sufficiency for Households with Children_cycle01.xlsx
+    Food Sufficiency for Households with Children_cycle02.xlsx
+    Food Sufficiency for Households with Children_cycle03.xlsx
+    Food Sufficiency for Households with Children_cycle04.xlsx
+    Food Sufficiency for Households with Children_cycle05.xlsx
+    Food Sufficiency for Households with Children_cycle06.xlsx
+    Food Sufficiency for Households with Children_cycle07.xlsx
+    Food Sufficiency for Households with Children_cycle08.xlsx
+    Food Sufficiency for Households with Children_cycle09.xlsx
+    food_insecurity_2024.csv # children food insecurity data in 2024
+    Household Income.csv
+    Household Type 2.csv
+    Household Type.csv
+    pop_by_age.csv
+    Population Type.csv
+    total_school_lunch_served.xlsx
+    voting_2000-2024.csv  # 2024 presidential election data at the county level
+  derived-data/       # derived data files
+    cep_county_IL.csv # CEP data in IL
+    cep_county_MO.csv # CEP data in MO
+    cep_school.csv # CEP data by school
+    child_pov_county.csv # child poverty rate in all counties
+    child_pov_il.csv # child poverty rate in IL
+    child_pov_mo.csv # child poverty rate in MO
+    master_state_merged.csv # master data
+    master_state_with_controls.csv # master data + OLS controls
+    vote_2024_il.csv #  Presidential election data in IL
+    vote_2024_mo.csv # Presidential election data in MO
+    vote_county_2024.csv # 2024 data for presidential election
+    vote_state_2024_with_others.csv # Election data + major variables of interest
 code/
-  preprocessing.py    # Filters fire and CPI data
-  plot_fires.py       # Plots fire perimeters
+  preprocessing.py    # Cleaning all the datasets
+figures/
+  plot1_png # state level visualization
+  plot2_png # county level viulaization
+writeup/
+  final_project.qmd
+  final_project_appendix.qmd # For OLS
+  final_project.pdf
+  final_project.html
+  final_project_files
+  
+  
 ```
 
 ## Git ignore
@@ -77,12 +120,8 @@ data/
 
 ## Usage
 
-1. Run preprocessing to filter data:
+1. Run preprocessing to raw data:
    ```bash
    python code/preprocessing.py
    ```
 
-2. Generate the fire perimeter plot:
-   ```bash
-   python code/plot_fires.py
-   ```

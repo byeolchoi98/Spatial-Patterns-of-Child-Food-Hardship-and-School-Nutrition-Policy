@@ -1,14 +1,10 @@
----
-title: "Preprocessing state"
-format: html
----
-
-# 1 State level: Subset and clean the datasets of interest (Other than voting data)
-## CEP data
-```{python}
 import pandas as pd
 import numpy as np
 
+# ==============================================================================
+# State level: Subset and clean the datasets of interest (Other than voting data)
+# ==============================================================================
+# ------------CEP data------------------
 cep = pd.read_excel(r"..\data\raw-data\cep_2024.xlsx")
 # -- Keep cols of interest --
 cep_clean = cep.drop(columns=["ISP Category"])
@@ -39,11 +35,6 @@ cep_school["enrollment"] = (
     cep_school["enrollment"]
     .replace(0, np.nan)
 )
-# Check missing values
-total_missing_enroll = cep_school["enrollment"].isna().sum()
-total_missing_ceppar = cep_school["cep_participation"].isna().sum()
-print("Total missing enrollment:", total_missing_enroll) # This returns 3192, so we are applying 10% rule
-print("Total missing enrollment:", total_missing_ceppar) # This retunrs 0, so we are using this data as it
 # Sort state based on the rate of missing enrollment
 # Based on the result, we are ruling out IA, UT, MS, AK, PA, OK, and MO when using student enrollment weighted CEP
 state_missing = (
@@ -122,10 +113,7 @@ cep_school.to_csv("../data/derived-data/cep_school.csv", index=False)
 # Reorder dataframe
 cep_state_clean = cep_state_clean[cols]
 
-```
-
-## Child poverty rate data
-```{python}
+# ---------child poverty---------------------
 child_pov = pd.read_csv(r"..\data\raw-data\child_poverty_rate_2024.csv", skiprows=[1])
 # -- Keep cols of interest --
 keep_cols = [
@@ -171,8 +159,6 @@ child_pov_county = child_pov_clean[
     child_pov_clean["GEO_ID"].str.startswith("050")
 ].copy()
 
-print("State rows:", len(child_pov_state))
-print("County rows:", len(child_pov_county))
 
 # -- Add fips columns and tidy them up --
 # Add "fips code" columns
@@ -184,13 +170,8 @@ child_pov_county["state_fips"] = child_pov_county["state_fips"].astype(str).str.
 child_pov_county["county_fips"] = child_pov_county["county_fips"].astype(str).str.zfill(3)
 # Store the data
 child_pov_county.to_csv("..\data\derived-data\child_pov_county.csv", index=False)
-#child_pov_state.to_csv("child_pov_state.csv", index=False)
-```
 
-## Food insecurity rate data
-```{python}
-import pandas as pd
-
+# ---------food insecurity-----------------
 food_insec = pd.read_csv(r"..\data\raw-data\food_insecurity_2024.csv")
 # -- Keep cols of interest --
 # HRFS12MC is related to the suevy question about food insecurity with a household with children
@@ -273,16 +254,11 @@ food_insec_state = (
 food_insec_state["child_food_insec_rate"] = (
     food_insec_state["weighted_insecure"] / food_insec_state["weighted_total"]
 )
-# -- Store the data --
-#food_insec_state.to_csv("food_insec_state.csv", index=False)
 
-```
-
-# 2 Merge the datasets
-## Create a basic merged data
-```{python}
-import pandas as pd
-
+# ==================================
+# Merge the dataset
+# ==================================
+# ---------basic master data ----------
 # -- Make sure they are both srt type
 cep_state_clean["state_fips"] = cep_state_clean["state_fips"].astype(str)
 child_pov_state["state_fips"] = child_pov_state["state_fips"].astype(str)
@@ -295,8 +271,6 @@ merged_state_pov = cep_state_clean.merge(
     how="left"
 )
 merged_state_pov[merged_state_pov["geo_name"].isna()]
-len(cep_state_clean)
-len(merged_state_pov)
 
 # + fooe insecurity
 merged_state_all = merged_state_pov.merge(
@@ -318,14 +292,8 @@ idx = cols.index("state_abbrev")
 cols.insert(idx + 1, "state_name")
 # Reorder dataframe
 merged_state_all = merged_state_all[cols]
-# -- Store the data --
-#merged_state_all.to_csv("master_state.csv", index=False)
 
-```
-
-## Add other columns
-```{python}
-import pandas as pd
+# --------add other variables-------------
 from pathlib import Path
 DERIVED_DIR = Path(r"..\data\derived-data")
 DATA_DIR   = Path(r"..\data\raw-data")
@@ -404,12 +372,8 @@ food_state["state_name"] = food_state["state_name"].astype(str).str.strip().str.
 
 master = master.merge(food_state, on="state_name", how="left")
 
-print("Merged weighted insufficiency:", master["food_insufficiency_weighted"].notna().sum(), "states")
 
-# ============================================================
 # 1)total_school_lunch_served
-# ============================================================
-
 raw = pd.read_excel(DATA_DIR / "total_school_lunch_served.xlsx", header=None)
 var_label = str(raw.iloc[0, 0]).strip()
 
@@ -437,9 +401,7 @@ master = master.merge(df, on="state_name", how="left")
 master = master.rename(columns = {"NATIONAL SCHOOL LUNCH PROGRAM:  TOTAL LUNCHES SERVED": "total_lunch_served"}
 ) 
 
-# ============================================================
 # 2) cash_payment_nslp
-# ============================================================
 
 raw = pd.read_excel(DATA_DIR / "cash_payment_nslp.xlsx", header=None)
 var_label = str(raw.iloc[0, 0]).strip()
@@ -468,9 +430,8 @@ master = master.merge(df, on="state_name", how="left")
 master = master.rename(columns = {"NATIONAL SCHOOL LUNCH PROGRAM:  CASH PAYMENTS": "total_cash_payments"}
 ) 
 
-# ============================================================
 # 3) commodity_cost
-# ============================================================
+
 raw = pd.read_excel(DATA_DIR / "commodity_cost.xlsx", header=None)
 var_label = str(raw.iloc[0, 0]).strip()
 
@@ -499,13 +460,8 @@ master = master.rename(columns = {"NATIONAL SCHOOL LUNCH PROGRAM:  COMMODITY COS
 : "total_commodity_costs"}
 ) 
 
-# ============================================================
-# ACS 2024 school-age population (pop_by_age) (5–17) → merge on state_name
-# (Paste this UNDER your 3-xlsx merge blocks. Assumes:
-#   - master already exists
-#   - master["state_name"] already cleaned
-#   - DATA_DIR already defined
-# ============================================================
+
+# 4) ACS 2024 school-age population (pop_by_age) (5–17) 
 
 acs = pd.read_csv(DATA_DIR / "pop_by_age.csv")
 
@@ -553,13 +509,10 @@ master["total_dollars_per_lunch"] = (master["total_cash_payments"] + master["tot
 # -----------------------
 out_path = DERIVED_DIR / "master_state_merged.csv"
 master.to_csv(out_path, index=False)
-print("Saved:", out_path)
-```
 
-# 3 State level: Subset and clean the datasets of interest (voting data)
-```{python}
-import pandas as pd
-
+# ====================================================================
+# State level: Subset and clean the datasets of interest (voting data)
+# ====================================================================
 # ------------------
 # Clean the data set
 # ------------------
@@ -601,7 +554,7 @@ vote_state_2024["dem_margin"] = (
     vote_state_2024["DEMOCRAT"] - vote_state_2024["REPUBLICAN"]
 ) / vote_state_2024["total_votes"]  
 
-vote_county_2024.to_csv(r"..\data\raw-data\vote_county_2024.csv", index=False)
+vote_county_2024.to_csv(r"..\data\derived-data\vote_county_2024.csv", index=False)
 #vote_state_2024.to_csv("vote_state_2024.csv", index=False)
 
 ## Child poverty and CEP rate
@@ -617,12 +570,392 @@ vote_state_2024 = vote_state_2024.merge(
 )
 
 # 4) Quick check
-print(vote_state_2024[["state_po", "cep_rate_school", "poverty_rate_children"]].isna().sum())
 vote_state_2024_sorted = vote_state_2024.sort_values(
     by="dem_margin",
     ascending=True
 )
-
 vote_state_2024_sorted.to_csv(r"..\data\derived-data\vote_state_2024_with_others.csv", index=False)
-```
 
+# ==============================================================================
+# County level: Subset and clean the datasets of interest (Other than voting data)
+# ==============================================================================
+
+# -----------------------------
+# 1) IL: child poverty and vote
+# -----------------------------
+child_pov_county = pd.read_csv(r"..\data\derived-data\child_pov_county.csv")
+child_pov_il = child_pov_county[child_pov_county["state_fips"] == 17].copy()
+child_pov_il = child_pov_il.rename(columns={
+    "fips": "county_fips",
+    "county_fips":"county_fips_3"})
+child_pov_il["county_fips"] = (
+    child_pov_il["county_fips"]
+    .astype(str)
+    .str.replace(r"\.0$", "", regex=True)
+    .str.strip()
+    .str.zfill(5)
+)
+child_pov_il["county_fips"]
+len(child_pov_il)
+
+vote_county_2024 = pd.read_csv(r"..\data\derived-data\vote_county_2024.csv")
+vote_county_2024["county_fips"] = vote_county_2024["county_fips"].astype(str).str.zfill(5)
+vote_county_2024["county_fips"] = (
+    vote_county_2024["county_fips"].astype(str)
+    .str.replace(r"\.0$", "", regex=True)
+    .str.strip()
+    .str.zfill(5)
+)
+vote_2024_il = vote_county_2024[vote_county_2024["county_fips"].str.startswith("17")].copy()
+len(vote_2024_il)
+
+vote_2024_il.to_csv(r"..\data\derived-data\vote_2024_il.csv", index=False)
+child_pov_il.to_csv(r"..\data\derived-data\child_pov_il.csv", index=False)
+
+# ------------------------
+# 2) IL cep school → county level
+# ------------------------
+
+# 1 Load files
+cep_school = pd.read_csv(r"..\data\derived-data\cep_school.csv")
+
+# 2 IL school data with county codes
+cep_school["isp"] = pd.to_numeric(cep_school["isp"], errors="coerce")
+cep_school[cep_school["state_abbrev"] == "IL"]["isp"].isna().sum()
+## Subset the data to Illinois data
+cep_school_IL = cep_school[cep_school["state_abbrev"] == "IL"]
+cep_school_IL["school_id"].nunique()
+## cep_school_IL.to_csv("cep_school_IL.csv", index=False)
+## Extract county ISBE code
+cep_school_IL["county_code_ISBE"] = cep_school_IL["lea_id"].str.split("-").str[1]
+## Remove county code "000" and "108" because they are not county institutions
+cep_school_IL = cep_school_IL[
+    ~cep_school_IL["county_code_ISBE"].isin(["000", "108"])
+]
+## Convert ISBE code into Fips code
+cep_school_IL["county_code_ISBE"] = cep_school_IL["county_code_ISBE"].astype(int)
+cep_school_IL["county_fips"] = (
+    "17" +
+    (2 * cep_school_IL["county_code_ISBE"] - 1)
+        .astype(str)
+        .str.zfill(3)
+)
+cep_school_IL["county_fips"].nunique() # This returns 102, equal to the number of counties in IL
+cep_school_IL_county = cep_school_IL.copy()
+
+# 3) Aggregate data at the county level
+## Aggregate data
+cep_county_IL = (
+    cep_school_IL_county
+    .groupby("county_fips")
+    .apply(lambda df: pd.Series({
+        "total_schools": df["school_id"].count(),
+        "total_students": df["enrollment"].sum(),
+        "cep_school_rate": (df["cep_participation"]=="Yes").mean(),
+        "cep_student_rate":
+            df.loc[df["cep_participation"]=="Yes","enrollment"].sum()
+            / df["enrollment"].sum(),
+        "weighted_isp":
+            (df["isp"]*df["enrollment"]).sum()
+            / df["enrollment"].sum()
+    }))
+    .reset_index()
+)
+cep_county_IL.to_csv(r"..\data\derived-data\cep_county_IL.csv", index=False)
+cep_county_IL["county_fips"]
+
+# -----------------------------
+# 2) MO: child poverty and vote
+# -----------------------------
+
+child_pov_mo = child_pov_county[child_pov_county["state_fips"] == 29].copy()
+child_pov_mo = child_pov_mo.rename(columns={
+    "fips": "county_fips",
+    "county_fips":"county_fips_3"})
+child_pov_mo["county_fips"] = (
+    child_pov_mo["county_fips"]
+    .astype(str)
+    .str.replace(r"\.0$", "", regex=True)
+    .str.strip()
+    .str.zfill(5)
+)
+child_pov_mo["county_fips"]
+len(child_pov_mo)
+
+vote_county_2024["county_fips"] = vote_county_2024["county_fips"].astype(str).str.zfill(5)
+vote_county_2024["county_fips"] = (
+    vote_county_2024["county_fips"].astype(str)
+    .str.replace(r"\.0$", "", regex=True)
+    .str.strip()
+    .str.zfill(5)
+)
+vote_2024_mo = vote_county_2024[vote_county_2024["county_fips"].str.startswith("29")].copy()
+len(vote_2024_mo)
+
+vote_2024_mo.to_csv(r"..\data\derived-data\vote_2024_mo.csv", index=False)
+child_pov_mo.to_csv(r"..\data\derived-data\child_pov_mo.csv", index=False)
+
+# ----------------------------
+# MO:CEP school　→　CEP county
+# -----------------------------
+
+# -------------------------
+# CEP file
+# -------------------------
+cep_school["isp"] = pd.to_numeric(cep_school["isp"], errors="coerce")
+cep_school[cep_school["state_abbrev"] == "MO"]["isp"].isna().sum()
+# Subset the data to Illinois data
+cep_school_MO = cep_school[cep_school["state_abbrev"] == "MO"]
+# Sanity check: school IDs are unique across the observations?
+len(cep_school_MO)
+cep_school_MO["school_id"].nunique()
+cep_school_MO["lea_id"].nunique()
+cep_school_MO.isna().sum()
+#cep_school_MO.to_csv("cep_school_MO.csv", index=False)
+
+# -----------------------------------
+# Crosswalk (school id → county fips)
+# -----------------------------------
+# laod necessary data sets
+ccd_sch = pd.read_csv(r"..\data\raw-data\crosswalk\ccd_sch.csv")
+ncessch = pd.read_excel(r"..\data\raw-data\crosswalk\EDGE_GEOCODE.xlsx")
+# Subset to MO data
+ccd_sch_mo = ccd_sch[ccd_sch["FIPST"] == 29]
+ncessch_mo = ncessch[ncessch["OPSTFIPS"] == 29]
+len(ccd_sch_mo)
+len(ncessch_mo)
+len(cep_school_MO)
+ccd_sch_mo["SCH_NAME"].nunique()
+# Add county fips data to ccd_sch_mo
+ccd_sch_mo["NCESSCH"] = ccd_sch_mo["NCESSCH"].astype(str)
+ncessch_mo["NCESSCH"] = ncessch_mo["NCESSCH"].astype(str)
+ccd_with_county = ccd_sch_mo.merge(
+    ncessch_mo[["NCESSCH", "CNTY"]],
+    on="NCESSCH",
+    how="left"
+)
+ccd_with_county = ccd_with_county.rename(
+    columns={"CNTY": "county_fips"}
+)
+
+# ------------------------------------
+# Merge county fips code with cep data
+# ------------------------------------
+# -------------------------
+# (1) Hypothesis check: ST_LEAID (MO-036137) vs CEP lea_id (036-137)
+# -------------------------
+# Build comparable LEA keys
+ccd_mo = ccd_with_county.copy()
+cep_mo = cep_school_MO.copy()
+ccd_mo["lea6"] = ccd_mo["ST_LEAID"].str.split("-").str[-1].str.zfill(6)     # "036137"
+ccd_mo["lea_id_from_ccd"] = ccd_mo["lea6"].str[:3] + "-" + ccd_mo["lea6"].str[3:]  # "036-137"
+
+cep_mo["lea_id"] = cep_mo["lea_id"].astype(str)
+cep_mo["lea6"] = cep_mo["lea_id"].str.replace("-", "", regex=False).str.zfill(6)
+
+# Coverage check: what share of CEP lea_id exists in CCD?
+lea_match_rate = cep_mo["lea6"].isin(set(ccd_mo["lea6"])).mean()
+print(f"LEA match rate (CEP lea_id in CCD): {lea_match_rate:.3f}")
+# This returns 98%, so we can moev on with this method
+
+# -----------------------------------
+# Build merge keys from CCD
+# -----------------------------------
+ccd_merge = ccd_with_county.copy()
+# Extract 6-digit LEA code
+ccd_merge["lea6"] = (
+    ccd_merge["ST_LEAID"]
+    .str.split("-").str[-1]
+    .str.zfill(6)
+)
+cep_mo["lea6"] = cep_mo["lea_id"].str.replace("-", "", regex=False).str.zfill(6)
+# Construct a LEA-to-county crosswalk using the modal (most frequent) county
+# Because some lead ids have several schools, which is difficult to detect which county each of them is in
+lea_county_mode = (
+    ccd_merge.dropna(subset=["county_fips"])
+      .groupby(["lea6", "county_fips"]).size()
+      .reset_index(name="n")
+      .sort_values(["lea6", "n"], ascending=[True, False])
+      .drop_duplicates("lea6")
+      [["lea6", "county_fips"]]
+)
+# Merge with cep
+cep_county_mo = cep_mo.merge(lea_county_mode, on="lea6", how="left")
+
+# sanity checks
+print("CEP rows:", len(cep_county_mo))
+print("Missing county_fips:", cep_county_mo["county_fips"].isna().sum())
+print("Match rate:", 1 - cep_county_mo["county_fips"].isna().mean())
+print("Unique counties in CEP:", cep_county_mo["county_fips"].nunique()) # This means about 20 counties are NA (not eligible for CEP)
+
+# Flag LEAs that span multiple counties
+lea_county_n = (
+    ccd_mo.groupby("lea6")["county_fips"].nunique().reset_index(name="n_counties")
+)
+multi_lea = set(lea_county_n.loc[lea_county_n["n_counties"] > 1, "lea6"])
+cep_county_mo["multi_county_lea"] = cep_county_mo["lea6"].isin(multi_lea)
+
+print("Rows in multi-county LEAs:", cep_county_mo["multi_county_lea"].sum())
+
+# 📌 Bottom line
+#✅ It is plausible and expected that some counties have zero eligible CEP schools in the official 2024–25 CEP list.
+#That means your ~20 “missing” counties from the CEP dataset are not necessarily missing due to data errors — they may genuinely have no eligible schools.
+#This reinforces your earlier reasoning:
+# counties with no eligible schools should be treated as undefined/structural rather than as random missing data.
+
+#--------------------------
+# Aggregate county data
+#---------------------------
+cep_county_mo.isna().sum() 
+cep_county_mo_clean = cep_county_mo.dropna(subset=["county_fips"]).copy()
+cep_county_MO = (
+    cep_county_mo_clean
+        .groupby("county_fips")
+        .agg(
+            n_eligible_schools=("school_id", "count"),
+            n_participating=("cep_participation", lambda x: (x == "Yes").sum())
+        )
+        .reset_index()
+)
+
+cep_county_MO["cep_school_rate"] = (
+    cep_county_MO["n_participating"] / cep_county_MO["n_eligible_schools"]
+)
+
+print("Number of counties:", len(cep_county_MO))
+print("Mean CEP school rate:", cep_county_MO["cep_school_rate"].mean())
+print("Min/Max CEP school rate:",
+      cep_county_MO["cep_school_rate"].min(),
+      cep_county_MO["cep_school_rate"].max())
+
+cep_county_MO.to_csv(r"..\data\derived-data\cep_county_MO.csv", index=False)
+
+# =====================================
+# Cleaning for OLS
+# =====================================
+
+# ============================================================
+# Paths
+# ============================================================
+MASTER_DIR = Path(r"..\data\derived-data")
+DATA_DIR   = Path(r"..\data\raw-data")
+
+MASTER_PATH = MASTER_DIR / "master_state_merged.csv"
+
+INC_PATH = DATA_DIR / "Household Income.csv"
+EMP_PATH = DATA_DIR / "Employment Status.csv"
+HH2_PATH = DATA_DIR / "Household Type 2.csv"
+HH_PATH  = DATA_DIR / "Houshold Type.csv"
+POP_PATH = DATA_DIR / "Population Type.csv"
+
+# ============================================================
+# Load master
+# ============================================================
+master = pd.read_csv(MASTER_PATH)
+master["state_name"] = master["state_name"].astype(str).str.strip().str.replace(r"\s+", " ", regex=True)
+
+# numeric cleaner (handles commas, %, blanks, ACS symbols)
+clean = lambda s: pd.to_numeric(
+    pd.Series(s).astype(str)
+      .str.replace(",", "", regex=False)
+      .str.replace("%", "", regex=False)
+      .str.strip()
+      .replace({"(X)": np.nan, "*****": np.nan, "--": np.nan, "nan": np.nan, "": np.nan}),
+    errors="coerce"
+).values
+
+# ============================================================
+# 1 Median household income (row: Households)
+# ============================================================
+inc = pd.read_csv(INC_PATH)
+inc_cols = [c for c in inc.columns if str(c).endswith("!!Median income (dollars)!!Estimate")]
+inc_row = inc.loc[1, inc_cols]  # row 1 = Households
+
+inc_df = pd.DataFrame({
+    "state_name": [c.split("!!")[0] for c in inc_cols],
+    "median_hh_income": clean(inc_row.values)
+})
+inc_df["state_name"] = inc_df["state_name"].astype(str).str.strip().str.replace(r"\s+", " ", regex=True)
+
+# ============================================================
+# 2 Unemployment rate (row: Population 16 years and over)
+# ============================================================
+emp = pd.read_csv(EMP_PATH)
+emp_cols = [c for c in emp.columns if str(c).endswith("!!Unemployment rate!!Estimate")]
+emp_row = emp.loc[0, emp_cols]  # row 0 = Population 16+
+
+emp_df = pd.DataFrame({
+    "state_name": [c.split("!!")[0] for c in emp_cols],
+    "unemployment_rate": clean(emp_row.values)  # percent points
+})
+emp_df["state_name"] = emp_df["state_name"].astype(str).str.strip().str.replace(r"\s+", " ", regex=True)
+
+# ============================================================
+# 3 SNAP households percent (row: Total/Households)
+# ============================================================
+hh2 = pd.read_csv(HH2_PATH)
+snap_cols = [c for c in hh2.columns if str(c).endswith("!!Percent households receiving food stamps/SNAP!!Estimate")]
+snap_row = hh2.loc[0, snap_cols]  # row 0 is overall
+
+snap_df = pd.DataFrame({
+    "state_name": [c.split("!!")[0] for c in snap_cols],
+    "snap_household_pct": clean(snap_row.values)  # percent points
+})
+snap_df["state_name"] = snap_df["state_name"].astype(str).str.strip().str.replace(r"\s+", " ", regex=True)
+
+# ============================================================
+# 4 Single-parent proxy = (Male no spouse) + (Female no spouse)  [percent]
+#    (Note: file does NOT contain "with children" breakdown)
+# ============================================================
+hh = pd.read_csv(HH_PATH)
+hhlab = hh["Label (Grouping)"].astype(str)
+
+male_idx = hhlab[hhlab.str.contains("Male householder, no spouse/partner present", regex=False)].index[0]
+fem_idx  = hhlab[hhlab.str.contains("Female householder, no spouse/partner present", regex=False)].index[0]
+
+pct_cols = [c for c in hh.columns if str(c).endswith("!!Percent")]
+male_row = hh.loc[male_idx, pct_cols]
+fem_row  = hh.loc[fem_idx, pct_cols]
+
+sp_df = pd.DataFrame({
+    "state_name": [c.split("!!")[0] for c in pct_cols],
+    "single_parent_pct": clean(male_row.values) + clean(fem_row.values)  # percent points
+})
+sp_df["state_name"] = sp_df["state_name"].astype(str).str.strip().str.replace(r"\s+", " ", regex=True)
+
+# ============================================================
+# 5 Race/Ethnicity: % Black (African American) and % Hispanic  [percent]
+# ============================================================
+pop = pd.read_csv(POP_PATH)
+poplab = pop["Label (Grouping)"].astype(str)
+
+# Hispanic row
+his_idx = poplab[poplab.str.contains("Hispanic or Latino (of any race)", regex=False)].index[0]
+# Black row: use "Black or African American alone" if present; else fallback to "Black or African American"
+blk_candidates = poplab[poplab.str.contains("Black or African American alone", regex=False)]
+blk_idx = blk_candidates.index[0] if len(blk_candidates) > 0 else poplab[poplab.str.contains("Black or African American", regex=False)].index[0]
+
+pop_pct_cols = [c for c in pop.columns if str(c).endswith("!!Percent")]
+
+his_row = pop.loc[his_idx, pop_pct_cols]
+blk_row = pop.loc[blk_idx, pop_pct_cols]
+
+race_df = pd.DataFrame({
+    "state_name": [c.split("!!")[0] for c in pop_pct_cols],
+    "pct_hispanic": clean(his_row.values),
+    "pct_black": clean(blk_row.values)
+})
+race_df["state_name"] = race_df["state_name"].astype(str).str.strip().str.replace(r"\s+", " ", regex=True)
+
+# ============================================================
+# Merge controls into master
+# ============================================================
+master = master.merge(inc_df, on="state_name", how="left")
+master = master.merge(emp_df, on="state_name", how="left")
+master = master.merge(snap_df, on="state_name", how="left")
+master = master.merge(sp_df, on="state_name", how="left")
+master = master.merge(race_df, on="state_name", how="left")
+
+# Save merged master
+out_path = MASTER_DIR / "master_state_with_controls.csv"
+master.to_csv(out_path, index=False)

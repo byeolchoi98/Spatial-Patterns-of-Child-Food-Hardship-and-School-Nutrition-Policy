@@ -6,7 +6,8 @@
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
-<meta name="author" content="Byeol Choi, Takuma Kazama">
+<meta name="author" content="Byeol Choi(byeolchoi98) from section 1">
+<meta name="author" content="Takuma Kazama(tak1610) from section 1">
 
 <title>Spatial Patterns in Child Food Hardship and School Nutrition Policy</title>
 <style>
@@ -24,17 +25,17 @@ ul.task-list li input[type="checkbox"] {
 </style>
 
 
-<script src="write_up_files/libs/clipboard/clipboard.min.js"></script>
-<script src="write_up_files/libs/quarto-html/quarto.js" type="module"></script>
-<script src="write_up_files/libs/quarto-html/tabsets/tabsets.js" type="module"></script>
-<script src="write_up_files/libs/quarto-html/popper.min.js"></script>
-<script src="write_up_files/libs/quarto-html/tippy.umd.min.js"></script>
-<script src="write_up_files/libs/quarto-html/anchor.min.js"></script>
-<link href="write_up_files/libs/quarto-html/tippy.css" rel="stylesheet">
-<link href="write_up_files/libs/quarto-html/quarto-syntax-highlighting-de070a7b0ab54f8780927367ac907214.css" rel="stylesheet" id="quarto-text-highlighting-styles">
-<script src="write_up_files/libs/bootstrap/bootstrap.min.js"></script>
-<link href="write_up_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="write_up_files/libs/bootstrap/bootstrap-e45286ae55112de182af3b94459e1a1c.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script src="final_project_files/libs/clipboard/clipboard.min.js"></script>
+<script src="final_project_files/libs/quarto-html/quarto.js" type="module"></script>
+<script src="final_project_files/libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="final_project_files/libs/quarto-html/popper.min.js"></script>
+<script src="final_project_files/libs/quarto-html/tippy.umd.min.js"></script>
+<script src="final_project_files/libs/quarto-html/anchor.min.js"></script>
+<link href="final_project_files/libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="final_project_files/libs/quarto-html/quarto-syntax-highlighting-de070a7b0ab54f8780927367ac907214.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="final_project_files/libs/bootstrap/bootstrap.min.js"></script>
+<link href="final_project_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="final_project_files/libs/bootstrap/bootstrap-e45286ae55112de182af3b94459e1a1c.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
 
 
 </head>
@@ -43,7 +44,7 @@ ul.task-list li input[type="checkbox"] {
 
 <div id="quarto-content" class="page-columns page-rows-contents page-layout-article">
 <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
-<div class="quarto-alternate-formats"><h2>Other Formats</h2><ul><li><a href="write_up.pdf"><i class="bi bi-file-pdf"></i>PDF</a></li></ul></div></div>
+<div class="quarto-alternate-formats"><h2>Other Formats</h2><ul><li><a href="final_project.pdf"><i class="bi bi-file-pdf"></i>PDF</a></li></ul></div></div>
 <main class="content" id="quarto-document-content">
 
 <header id="title-block-header" class="quarto-title-block default">
@@ -56,9 +57,10 @@ ul.task-list li input[type="checkbox"] {
 <div class="quarto-title-meta">
 
     <div>
-    <div class="quarto-title-meta-heading">Author</div>
+    <div class="quarto-title-meta-heading">Authors</div>
     <div class="quarto-title-meta-contents">
-             <p>Byeol Choi, Takuma Kazama </p>
+             <p>Byeol Choi(byeolchoi98) from section 1 </p>
+             <p>Takuma Kazama(tak1610) from section 1 </p>
           </div>
   </div>
     
@@ -79,123 +81,98 @@ Federal school nutrition programs — especially the Community Eligibility Provi
 <ul>
 <li>Do higher CEP participation rates correspond to lower food hardship?</li>
 <li>Does higher NSLP spending per school-age child relate to improved outcomes?</li>
-<li>Are hardship patterns geographically clustered?</li>
 </ul>
-<p>Rather than focusing only on regression estimates, this project emphasizes <strong>visual and spatial evidence</strong>, combining mapping, OLS, and spatial autocorrelation analysis.</p>
-<hr>
+<p>Rather than focusing only on regression estimates, this project emphasizes <strong>visual and spatial evidence</strong>.</p>
 </section>
 <section id="data-and-construction" class="level1">
 <h1>2. Data and Construction</h1>
-<p>We merge multiple state-level sources:</p>
+<section id="state-level-visualization" class="level2">
+<h2 class="anchored" data-anchor-id="state-level-visualization">State level visualization</h2>
+<p>For state-level visulaization, we mainly focus on child food insufficiency data (Househould Pulse Survey), CEP participation data (Food and Research Action Center), and 2024 Presidential election voting data (MIT Election Lab). For data construction, we created a master data (master_state_marged.csv), which also has other child well-bieng variables (details are in README.qmd) as well as the main variables. For the voting data, which is at the county level, we aggregated it at the state level.</p>
+<section id="difficulties-or-spcial-steps-in-the-data-cleaning-process" class="level3">
+<h3 class="anchored" data-anchor-id="difficulties-or-spcial-steps-in-the-data-cleaning-process">Difficulties or spcial steps in the data cleaning process</h3>
 <ul>
-<li>Household Pulse Survey (Food Sufficiency)</li>
-<li>USDA NSLP expenditure data</li>
-<li>CEP participation data</li>
-<li>ACS socioeconomic controls</li>
-<li>2018 TIGER/Line state shapefile</li>
+<li><p>Constructing Food Insufficiency:<br>
+Food insufficiency is defined as households reporting “sometimes” or “often” not having enough to eat in the past 7 days, weighted by total respondents.</p></li>
+<li><p>Democratic margin:<br>
+The voting data only has the number of votes that each party gets, so we converted it into a relative metric, which is called “democratic margin”.</p></li>
 </ul>
-<p>The final dataset contains 51 observations (50 states + DC).</p>
-<section id="constructing-food-insufficiency" class="level2">
-<h2 class="anchored" data-anchor-id="constructing-food-insufficiency">Constructing Food Insufficiency</h2>
-<p>Food insufficiency is defined as households reporting “sometimes” or “often” not having enough to eat in the past 7 days, weighted by total respondents.</p>
-<p>Below is the construction logic:</p>
-<p>This aggregation allows us to compare hardship consistently across states.</p>
-<hr>
+</section>
+</section>
+<section id="county-level-visualization" class="level2">
+<h2 class="anchored" data-anchor-id="county-level-visualization">County level visualization</h2>
+<p>For county-level visualization, we focus on the same variables of interest as the state-level visualization. However, food insecurity data is not available at the county level, so we used county-level child poverty rate (U.S. Census Bureau) as a proxy. For eahc data, we subset them to a county-level one.</p>
+<section id="difficulties-or-spcial-steps-in-the-data-cleaning-process-1" class="level3">
+<h3 class="anchored" data-anchor-id="difficulties-or-spcial-steps-in-the-data-cleaning-process-1">Difficulties or spcial steps in the data cleaning process</h3>
+<ul>
+<li>CEP participation rate: CEP participation rate data is the shcool-district level, so we used IL’s ISBE code as a crosswalk, which connects school ID with county fips codes in IL.</li>
+</ul>
+</section>
+</section>
+<section id="ols-regression-analysis-state-level" class="level2">
+<h2 class="anchored" data-anchor-id="ols-regression-analysis-state-level">OLS regression analysis (state-level)</h2>
+<p>For OLS regression, we add additional variables to the master data for more robust analysis (master_merged_with_controls.csv). Detailed information is descrived in README.qmd.</p>
 </section>
 </section>
 <section id="visualizing-geographic-variation" class="level1">
 <h1>3. Visualizing Geographic Variation</h1>
-<p>Mapping provides the first layer of insight.<br>
-We merge our constructed dataset with the U.S. state shapefile and generate choropleth maps.</p>
+<section id="state-level-visualization-1" class="level2">
+<h2 class="anchored" data-anchor-id="state-level-visualization-1">State level visualization</h2>
+<p>To address the question “Do higher CEP participation rates correspond to lower food hardship?”, we plot child food insufficiency rate and cep participation rate data in a scatterplot. In addtion to this, we colored the points by democratic margin because our interest also lies in whether some other factor than child well-bieng variables may explain cep participation rate. To do so, we merged voting data and master data as well.</p>
+<p><img src="../figures/plot_1.png" class="img-fluid" style="width:50.0%"></p>
 <section id="visual-pattern" class="level3">
 <h3 class="anchored" data-anchor-id="visual-pattern">Visual Pattern</h3>
 <ul>
-<li>Southern states show consistently higher hardship.</li>
-<li>Northeast and Upper Midwest tend to display lower rates.</li>
-<li>Policy intensity does not visually mirror hardship geography.</li>
+<li>CEP participation rate is positively correlated with the child food insufficiency rate.</li>
+<li>This means that the policy covers those in need to some extent.</li>
+<li>However, it is also clear that democratic-leaning states (blue states) tend to have a higher CEP participation rate.</li>
 </ul>
-<p>These spatial differences motivate formal statistical testing.</p>
-<hr>
+<p>These findings motivated us to a county-level analysis, taking IL as an example. In addtion, these spatial differences motivate formal statistical testing, which is whehter higher cep rates actually improves child-wellbeing (addressed in OLS part).</p>
+</section>
+</section>
+<section id="county-level-visualization-1" class="level2">
+<h2 class="anchored" data-anchor-id="county-level-visualization-1">County level visualization</h2>
+<p>For the county-level analysis, we put the three data on the IL map, child poverty rate, cep participation rate, and democratic margin to see if there is any spatial pattern.</p>
+<p><img src="../figures/plot_2.png" class="img-fluid" style="width:90.0%"></p>
+<section id="visual-pattern-1" class="level3">
+<h3 class="anchored" data-anchor-id="visual-pattern-1">Visual Pattern</h3>
+<ul>
+<li>It appears that cep participation rate is slightly positively correlated with the child poverty rate.</li>
+<li>This means that the policy covers those in need to some extent even at the county level.</li>
+<li>However, from the visual insepction, it is difficult to capture the spatial pattern or correlation between cep rate and the other two variables.<br>
+Combined with the state-level visualization, it appears that the policy targeting is aligned with high-need regions. However, looking at the political effect, its correlation with the cep rate is pronounced, espetically at the state level.</li>
+</ul>
+</section>
 </section>
 </section>
 <section id="regression-analysis" class="level1">
 <h1>4. Regression Analysis</h1>
-<p>To evaluate the relationship between policy variables and hardship, we estimate OLS models controlling for socioeconomic characteristics.</p>
-<p>The specification includes:</p>
-<ul>
-<li><code>cep_rate_school</code></li>
-<li><code>nslp_total_dollars_per_school_age</code></li>
-<li>Median household income</li>
-<li>Unemployment rate</li>
-<li>SNAP participation</li>
-<li>Family structure</li>
-<li>Racial/ethnic composition</li>
-</ul>
-<p>Example specification:</p>
-<section id="core-findings" class="level3">
-<h3 class="anchored" data-anchor-id="core-findings">Core Findings</h3>
-<ul>
-<li>CEP participation: not statistically significant</li>
-<li>NSLP spending: not statistically significant</li>
-<li>Median income: strong negative association</li>
-<li>Unemployment: positive and significant</li>
-<li>Racial composition variables: correlated with hardship</li>
-<li>R² ≈ 0.71 (food insufficiency model)</li>
-</ul>
+<p>This is discussed in the appendix</p>
 </section>
-<section id="interpretation" class="level3">
-<h3 class="anchored" data-anchor-id="interpretation">Interpretation</h3>
-<p>At the state level, structural economic conditions explain more variation than program intensity measures.</p>
-<p>However, regression alone cannot capture spatial dependence.</p>
-<hr>
-</section>
-</section>
-<section id="spatial-autocorrelation-morans-i" class="level1">
-<h1>5. Spatial Autocorrelation (Moran’s I)</h1>
-<p>To assess whether hardship clusters geographically, we compute Local Moran’s I (LISA).</p>
-<p>Cluster categories:</p>
-<ul>
-<li>High–High: high hardship surrounded by high hardship</li>
-<li>Low–Low: low hardship surrounded by low hardship</li>
-<li>High–Low / Low–High: spatial outliers</li>
-</ul>
-<section id="spatial-findings" class="level3">
-<h3 class="anchored" data-anchor-id="spatial-findings">Spatial Findings</h3>
-<ul>
-<li>Significant High–High clusters appear in parts of the South.</li>
-<li>Low–Low clusters emerge in the Northeast.</li>
-<li>Food hardship is spatially concentrated rather than randomly distributed.</li>
-</ul>
-<p>This suggests regional dynamics beyond simple cross-state averages.</p>
-<hr>
-</section>
+<section id="streamlit" class="level1">
+<h1>5. Streamlit</h1>
+<p>For dynamic visualization, we created the streamlit app where we can plot the various variables we discussed here. In addtion to what is dicussed in the plot, we added addtional plots (MO’s data we discussed in the presentation and so on).<br>
+Noth that for county maps in the app, using altair kept showing errors, we decided to use matplotlib instead. The link is here: https://child-food-hardship-dashboard.streamlit.app/</p>
 </section>
 <section id="discussion" class="level1">
 <h1>6. Discussion</h1>
 <section id="what-we-learn" class="level3">
-<h3 class="anchored" data-anchor-id="what-we-learn">What We Learn</h3>
+<h3 class="anchored" data-anchor-id="what-we-learn">What we learn</h3>
 <ul>
-<li>State-level policy intensity (CEP, NSLP dollars) does not independently predict hardship once controls are included.</li>
-<li>Economic fundamentals dominate.</li>
-<li>Spatial clustering reveals regional concentration.</li>
-<li>Visual mapping adds interpretive depth beyond regression tables.</li>
+<li>The policy (cep participation rate) covers those in need in some degrees</li>
+<li>However, it may be associated with political affiliation at the state level</li>
 </ul>
 </section>
 <section id="limitations" class="level3">
 <h3 class="anchored" data-anchor-id="limitations">Limitations</h3>
 <ul>
-<li>State-level aggregation masks within-state disparities.</li>
-<li>Cross-sectional design prevents causal claims.</li>
-<li>Policy variables may operate more strongly at district level.</li>
-<li>Potential multicollinearity among demographic controls.</li>
+<li>Only focus on IL data at the county level</li>
 </ul>
-<hr>
 </section>
 </section>
 <section id="conclusion" class="level1">
 <h1>7. Conclusion</h1>
-<p>Child food hardship at the state level appears more strongly associated with structural socioeconomic conditions than with CEP participation or NSLP spending intensity. Yet, the presence of significant spatial clustering indicates that hardship is regionally concentrated, reinforcing the importance of geographically targeted policy approaches and spatially informed analysis.</p>
-<hr>
+<p>Overall, the school meal program covers high-need regions. However, political leanings are also associated with the policy advancement, especially at the state level. Thus, institutional drive at the state level may be a key to further promote the policies.</p>
 </section>
 
 </main>

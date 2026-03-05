@@ -4,4 +4,8 @@ numpy
 geopandas
 matplotlib
 altair
+statsmodels
 requests
+pyproj
+shapely
+fiona
