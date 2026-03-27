@@ -44,8 +44,9 @@ alt.data_transformers.disable_max_rows()
 # -----------------------------
 # App config
 # -----------------------------
-st.set_page_config(page_title="School Lunch Policy Dashboard", layout="wide")
+st.set_page_config(page_title="School Lunch Policy | Story Dashboard", layout="wide")
 st.title("School Lunch Policy Dashboard")
+st.caption("By Byeol Choi | Narrative dashboard for state and county patterns in child poverty, food insecurity, and CEP participation")
 
 # -----------------------------
 # Paths (repo-safe)
@@ -54,9 +55,13 @@ REPO_DIR = Path(__file__).resolve().parent.parent
 RAW_DIR = REPO_DIR / "data" / "raw-data"
 DERIVED_DIR = REPO_DIR / "data" / "derived-data"
 
+CENSUS_COUNTY_ZIP_URL = "https://www2.census.gov/geo/tiger/TIGER2024/COUNTY/tl_2024_us_county.zip"
+COUNTY_SHP_LOCAL = RAW_DIR / "shp_file" / "county" / "tl_2025_us_county.shp"
+GIS_CACHE_DIR = REPO_DIR / ".cache_gis"
+
+
 @st.cache_data(show_spinner=True)
 def ensure_county_shapefile(local_shp_path: Path, cache_dir: Path) -> Path:
-
     if local_shp_path.exists():
         return local_shp_path
 
@@ -86,11 +91,6 @@ def ensure_county_shapefile(local_shp_path: Path, cache_dir: Path) -> Path:
 
     return shp_path
 
-CENSUS_COUNTY_ZIP_URL = "https://www2.census.gov/geo/tiger/TIGER2024/COUNTY/tl_2024_us_county.zip"
-
-COUNTY_SHP_LOCAL = RAW_DIR / "shp_file" / "county" / "tl_2025_us_county.shp"
-
-GIS_CACHE_DIR = REPO_DIR / ".cache_gis"
 
 COUNTY_SHP_PATH = ensure_county_shapefile(
     COUNTY_SHP_LOCAL,
@@ -147,23 +147,6 @@ COUNTY_VAR_LABELS = {
 
 def label_for(var: str, mapping: dict[str, str]) -> str:
     return mapping.get(var, var)
-
-
-# -----------------------------
-# Debug panel (paths)
-# -----------------------------
-with st.expander("File path check (debug)", expanded=False):
-    st.write("REPO_DIR:", str(REPO_DIR))
-    st.write("RAW_DIR:", str(RAW_DIR))
-    st.write("DERIVED_DIR:", str(DERIVED_DIR))
-    st.write("MASTER_STATE_PATH exists:", MASTER_STATE_PATH.exists(), str(MASTER_STATE_PATH))
-    st.write("COUNTY_SHP_PATH exists:", COUNTY_SHP_PATH.exists(), str(COUNTY_SHP_PATH))
-    st.write("Shapefile sidecars (.dbf/.shx/.prj) exist:",
-             COUNTY_SHP_PATH.with_suffix(".dbf").exists(),
-             COUNTY_SHP_PATH.with_suffix(".shx").exists(),
-             COUNTY_SHP_PATH.with_suffix(".prj").exists())
-    st.write("IL files exist:", CEP_IL.exists(), POV_IL.exists(), VOTE_IL.exists())
-    st.write("MO files exist:", CEP_MO.exists(), POV_MO.exists(), VOTE_MO.exists())
 
 
 # ============================================================
@@ -435,13 +418,11 @@ def county_maps_three_panels_matplotlib(
     ax2 = fig.add_subplot(gs[0, 1])
     ax3 = fig.add_subplot(gs[0, 2])
 
-    # Common map styling
     for ax in (ax1, ax2, ax3):
         ax.set_axis_off()
 
     fig.suptitle(state_title, fontsize=14, y=0.98)
 
-    # Panel 1: CEP
     ax1.set_title("CEP", fontsize=12)
     m1 = gdf.plot(
         column="cep_school_rate",
@@ -456,7 +437,6 @@ def county_maps_three_panels_matplotlib(
     cb1.ax.tick_params(labelsize=9)
     cb1.set_label(COUNTY_VAR_LABELS["cep_school_rate"], fontsize=10)
 
-    # Panel 2: Poverty
     ax2.set_title("Child poverty", fontsize=12)
     m2 = gdf.plot(
         column="poverty_rate_children",
@@ -471,9 +451,7 @@ def county_maps_three_panels_matplotlib(
     cb2.ax.tick_params(labelsize=9)
     cb2.set_label(COUNTY_VAR_LABELS["poverty_rate_children"], fontsize=10)
 
-    # Panel 3: Dem margin (diverging)
     ax3.set_title("Political leaning", fontsize=12)
-    # robust range for diverging scale
     dem = pd.to_numeric(gdf["dem_margin"], errors="coerce")
     max_abs = np.nanmax(np.abs(dem.values)) if np.isfinite(dem).any() else 1.0
     max_abs = float(max(max_abs, 0.5))
@@ -504,7 +482,14 @@ def run_ols_table_state(df: pd.DataFrame, y: str, x_main: list[str], controls: l
     d = df[cols].dropna().copy()
 
     if y not in d.columns or len(d) < 5:
-        return pd.DataFrame({"term": ["(insufficient data)"], "coef": [np.nan], "std_err": [np.nan], "t": [np.nan], "p_value": [np.nan], "n": [len(d)]})
+        return pd.DataFrame({
+            "term": ["(insufficient data)"],
+            "coef": [np.nan],
+            "std_err": [np.nan],
+            "t": [np.nan],
+            "p_value": [np.nan],
+            "n": [len(d)]
+        })
 
     X = d[[c for c in cols if c != y]].copy()
     X = sm.add_constant(X, has_constant="add")
@@ -540,7 +525,14 @@ def run_ols_table_county(county_df: pd.DataFrame, y: str, x: str) -> pd.DataFram
     d = county_df.dropna(subset=[c for c in needed if c in county_df.columns]).copy()
 
     if len(d) < 5:
-        return pd.DataFrame({"term": ["(insufficient data)"], "coef": [np.nan], "std_err": [np.nan], "t": [np.nan], "p_value": [np.nan], "n": [len(d)]})
+        return pd.DataFrame({
+            "term": ["(insufficient data)"],
+            "coef": [np.nan],
+            "std_err": [np.nan],
+            "t": [np.nan],
+            "p_value": [np.nan],
+            "n": [len(d)]
+        })
 
     X = d[[x, "dem_margin"]].copy()
     X = sm.add_constant(X, has_constant="add")
@@ -573,6 +565,67 @@ def run_ols_table_county(county_df: pd.DataFrame, y: str, x: str) -> pd.DataFram
     return out
 
 
+def safe_corr(df: pd.DataFrame, x: str, y: str) -> float:
+    d = df[[x, y]].dropna()
+    if len(d) < 3:
+        return np.nan
+    return float(d[x].corr(d[y]))
+
+
+def format_signed(value: float, digits: int = 2) -> str:
+    if pd.isna(value):
+        return "N/A"
+    return f"{value:+.{digits}f}"
+
+
+def summarize_state_story(df: pd.DataFrame, x_var: str, y_var: str) -> dict[str, object]:
+    d = df[[c for c in ["state_name", x_var, y_var] if c in df.columns]].dropna().copy()
+    corr = safe_corr(d, x_var, y_var)
+    out = {"corr": corr, "highest_x": None, "highest_y": None}
+
+    if len(d) == 0:
+        return out
+
+    if "state_name" in d.columns:
+        out["highest_x"] = d.loc[d[x_var].idxmax(), "state_name"]
+        out["highest_y"] = d.loc[d[y_var].idxmax(), "state_name"]
+    return out
+
+
+def summarize_county_story(county_df: pd.DataFrame) -> dict[str, object]:
+    d = county_df[[c for c in ["county_fips", "cep_school_rate", "poverty_rate_children", "dem_margin"] if c in county_df.columns]].dropna().copy()
+    out = {
+        "corr_cep_poverty": np.nan,
+        "corr_margin_poverty": np.nan,
+        "top_poverty_county": None,
+        "top_cep_county": None,
+    }
+    if len(d) == 0:
+        return out
+
+    out["corr_cep_poverty"] = safe_corr(d, "cep_school_rate", "poverty_rate_children") if {"cep_school_rate", "poverty_rate_children"}.issubset(d.columns) else np.nan
+    out["corr_margin_poverty"] = safe_corr(d, "dem_margin", "poverty_rate_children") if {"dem_margin", "poverty_rate_children"}.issubset(d.columns) else np.nan
+    if "county_fips" in d.columns:
+        out["top_poverty_county"] = d.loc[d["poverty_rate_children"].idxmax(), "county_fips"]
+        out["top_cep_county"] = d.loc[d["cep_school_rate"].idxmax(), "county_fips"]
+    return out
+
+
+def narrative_intro() -> None:
+    st.markdown(
+        """
+        This dashboard is designed to do two things: show where child need is concentrated and show how school lunch support compares across places.
+        Use **Story view** for a guided narrative, then switch to **Explore view** to test alternative variable combinations.
+        """
+    )
+
+
+def metric_card_row(items: list[tuple[str, str, str]]) -> None:
+    cols = st.columns(len(items))
+    for col, (label, value, help_text) in zip(cols, items):
+        col.metric(label, value, help=help_text)
+
+
 # ============================================================
 # Load state data
 # ============================================================
@@ -585,7 +638,9 @@ state_df = load_state_master(MASTER_STATE_PATH)
 # ============================================================
 # Sidebar navigation
 # ============================================================
-level = st.sidebar.radio("Select analysis level", ["State level", "County level"])
+st.sidebar.markdown("## Dashboard controls")
+view_mode = st.sidebar.radio("View mode", ["Story view", "Explore view"], index=0)
+level = st.sidebar.radio("Analysis level", ["State level", "County level"])
 
 
 # ============================================================
@@ -601,18 +656,22 @@ if level == "State level":
         st.error("State master is missing expected columns. Check master_state_with_controls.csv.")
         st.stop()
 
+    default_x = "cep_rate_school" if "cep_rate_school" in x_candidates else x_candidates[0]
+    default_y = "child_food_insec_rate" if "child_food_insec_rate" in y_candidates else y_candidates[0]
+
     x_var = st.sidebar.selectbox(
         "X variable",
         x_candidates,
-        index=0,
+        index=x_candidates.index(default_x),
         format_func=lambda v: label_for(v, STATE_VAR_LABELS),
     )
 
     y_candidates_filtered = [v for v in y_candidates if v != x_var] or y_candidates
+    default_y_filtered = default_y if default_y in y_candidates_filtered else y_candidates_filtered[0]
     y_var = st.sidebar.selectbox(
         "Y variable",
         y_candidates_filtered,
-        index=0,
+        index=y_candidates_filtered.index(default_y_filtered),
         format_func=lambda v: label_for(v, STATE_VAR_LABELS),
     )
 
@@ -624,36 +683,94 @@ if level == "State level":
         format_func=lambda v: label_for(v, STATE_VAR_LABELS),
     )
 
-    left, right = st.columns([1.1, 1.0], gap="large")
+    label_col = "state_name" if "state_name" in state_df.columns else ("state_abbrev" if "state_abbrev" in state_df.columns else None)
+    if label_col is None:
+        state_df["_label_tmp"] = np.arange(len(state_df)).astype(str)
+        label_col = "_label_tmp"
 
-    with left:
-        st.subheader("State scatter")
-        label_col = "state_name" if "state_name" in state_df.columns else ("state_abbrev" if "state_abbrev" in state_df.columns else None)
-        if label_col is None:
-            state_df["_label_tmp"] = np.arange(len(state_df)).astype(str)
-            label_col = "_label_tmp"
+    story = summarize_state_story(state_df, x_var, y_var)
 
-        st.altair_chart(
-            altair_state_scatter_with_regression(state_df, x=x_var, y=y_var, label_col=label_col, height=560),
-            use_container_width=True,
+    if view_mode == "Story view":
+        narrative_intro()
+        st.markdown("### What this view is showing")
+        st.write(
+            f"This comparison centers on **{label_for(x_var, STATE_VAR_LABELS)}** and **{label_for(y_var, STATE_VAR_LABELS)}**. "
+            "The goal is to see whether states with stronger lunch-policy coverage also look different on child need outcomes."
         )
+        metric_card_row([
+            (
+                "Correlation",
+                format_signed(story["corr"], 2),
+                f"Linear association between {label_for(x_var, STATE_VAR_LABELS)} and {label_for(y_var, STATE_VAR_LABELS)}.",
+            ),
+            (
+                f"Highest {label_for(x_var, STATE_VAR_LABELS)}",
+                str(story["highest_x"] or "N/A"),
+                "State with the highest value on the selected X variable.",
+            ),
+            (
+                f"Highest {label_for(y_var, STATE_VAR_LABELS)}",
+                str(story["highest_y"] or "N/A"),
+                "State with the highest value on the selected Y variable.",
+            ),
+        ])
 
-        st.subheader("OLS table")
+        left, right = st.columns([1.2, 1.0], gap="large")
+        with left:
+            st.subheader("1. Cross-state relationship")
+            st.altair_chart(
+                altair_state_scatter_with_regression(state_df, x=x_var, y=y_var, label_col=label_col, height=500),
+                use_container_width=True,
+            )
+            st.caption("Each point is a state. The fitted line helps you see the overall direction without losing the individual observations.")
+
+        with right:
+            st.subheader("2. Geographic pattern")
+            try:
+                title = f"{label_for(x_var, STATE_VAR_LABELS)} by state"
+                st.altair_chart(
+                    altair_state_choropleth(state_df, value_col=x_var, title=title, height=560),
+                    use_container_width=True,
+                )
+            except Exception as e:
+                st.info("State choropleth not available (missing a usable state FIPS key).")
+                with st.expander("Details"):
+                    st.write(str(e))
+
+        st.subheader("3. Model summary")
+        st.write(
+            "The table below estimates the association between the selected outcome and your chosen predictor, with optional controls. "
+            "This is useful for a quick directional check, not a causal claim."
+        )
         ols_tbl = run_ols_table_state(state_df, y=y_var, x_main=[x_var], controls=controls)
         st.dataframe(ols_tbl, use_container_width=True)
 
-    with right:
-        st.subheader("State choropleth")
-        try:
-            title = f"{label_for(x_var, STATE_VAR_LABELS)} by state"
+    else:
+        left, right = st.columns([1.1, 1.0], gap="large")
+
+        with left:
+            st.subheader("State scatter")
             st.altair_chart(
-                altair_state_choropleth(state_df, value_col=x_var, title=title, height=620),
+                altair_state_scatter_with_regression(state_df, x=x_var, y=y_var, label_col=label_col, height=560),
                 use_container_width=True,
             )
-        except Exception as e:
-            st.info("State choropleth not available (missing a usable state FIPS key).")
-            with st.expander("Details"):
-                st.write(str(e))
+
+            st.subheader("OLS table")
+            ols_tbl = run_ols_table_state(state_df, y=y_var, x_main=[x_var], controls=controls)
+            st.dataframe(ols_tbl, use_container_width=True)
+
+        with right:
+            st.subheader("State choropleth")
+            try:
+                title = f"{label_for(x_var, STATE_VAR_LABELS)} by state"
+                st.altair_chart(
+                    altair_state_choropleth(state_df, value_col=x_var, title=title, height=620),
+                    use_container_width=True,
+                )
+            except Exception as e:
+                st.info("State choropleth not available (missing a usable state FIPS key).")
+                with st.expander("Details"):
+                    st.write(str(e))
 
 
 # ============================================================
@@ -664,7 +781,6 @@ else:
 
     state_choice = st.sidebar.selectbox("Select state", ["Illinois (IL)", "Missouri (MO)"], index=0)
 
-    # Matplotlib rendering is more forgiving, but simplify still helps speed.
     simplify_tol_m = st.sidebar.slider(
         "Geometry simplification (meters)",
         min_value=0,
@@ -692,55 +808,108 @@ else:
         st.error("Missing required county CSV(s):\n" + "\n".join([str(m) for m in missing]))
         st.stop()
 
-    left, right = st.columns([1.6, 1.0], gap="large")
+    gdf_state = build_county_gdf_threepanel(
+        shp_path=COUNTY_SHP_PATH,
+        cep_path=cep_path,
+        pov_path=pov_path,
+        vote_path=vote_path,
+        statefp=statefp,
+    )
 
-    with left:
-        st.subheader("County maps")
+    cep, pov, vote = load_county_inputs(cep_path, pov_path, vote_path)
+    county_df = (
+        cep[["county_fips", "cep_school_rate"]]
+        .merge(pov[["county_fips", "poverty_rate_children"]], on="county_fips", how="left")
+        .merge(vote[["county_fips", "dem_margin"]], on="county_fips", how="left")
+    )
 
-        gdf_state = build_county_gdf_threepanel(
-            shp_path=COUNTY_SHP_PATH,
-            cep_path=cep_path,
-            pov_path=pov_path,
-            vote_path=vote_path,
-            statefp=statefp,
+    x_opts = [v for v in ["cep_school_rate", "dem_margin"] if v in county_df.columns]
+    y_opts = [v for v in ["poverty_rate_children"] if v in county_df.columns]
+
+    x_var = st.sidebar.selectbox("Scatter X axis", x_opts, index=0, format_func=lambda v: label_for(v, COUNTY_VAR_LABELS))
+    y_var = st.sidebar.selectbox("Scatter Y axis", y_opts, index=0, format_func=lambda v: label_for(v, COUNTY_VAR_LABELS))
+
+    county_story = summarize_county_story(county_df)
+
+    if view_mode == "Story view":
+        narrative_intro()
+        st.markdown(f"### County story: {state_choice}")
+        st.write(
+            "This section compares county-level CEP participation, child poverty, and political context. "
+            "Read the maps first, then use the scatter to see how those county patterns line up numerically."
         )
 
-        with st.expander("County merge sanity check (debug)", expanded=False):
-            st.write("Rows (counties):", len(gdf_state))
-            st.write("Non-missing CEP:", int(gdf_state["cep_school_rate"].notna().sum()))
-            st.write("Non-missing Poverty:", int(gdf_state["poverty_rate_children"].notna().sum()))
-            st.write("Non-missing Dem margin:", int(gdf_state["dem_margin"].notna().sum()))
-            st.write("CRS:", str(gdf_state.crs))
+        metric_card_row([
+            (
+                "CEP ↔ Poverty correlation",
+                format_signed(county_story["corr_cep_poverty"], 2),
+                "Association between county CEP participation and child poverty.",
+            ),
+            (
+                "Politics ↔ Poverty correlation",
+                format_signed(county_story["corr_margin_poverty"], 2),
+                "Association between county Democratic margin and child poverty.",
+            ),
+            (
+                "Highest-poverty county",
+                str(county_story["top_poverty_county"] or "N/A"),
+                "County FIPS with the highest child poverty rate in the selected state.",
+            ),
+            (
+                "Highest-CEP county",
+                str(county_story["top_cep_county"] or "N/A"),
+                "County FIPS with the highest CEP participation rate in the selected state.",
+            ),
+        ])
 
-        fig = county_maps_three_panels_matplotlib(
-            gdf_5070=gdf_state,
-            state_title=map_title,
-            simplify_tol_m=float(simplify_tol_m),
+        left, right = st.columns([1.6, 1.0], gap="large")
+        with left:
+            st.subheader("1. County maps")
+            fig = county_maps_three_panels_matplotlib(
+                gdf_5070=gdf_state,
+                state_title=map_title,
+                simplify_tol_m=float(simplify_tol_m),
+            )
+            st.pyplot(fig, use_container_width=True)
+            plt.close(fig)
+            st.caption("Read the three panels together: CEP participation, child poverty, and political leaning may overlap in some areas and diverge in others.")
+
+        with right:
+            st.subheader("2. County scatter")
+            st.altair_chart(
+                altair_county_scatter(county_df, x=x_var, y=y_var, height=620),
+                use_container_width=True,
+            )
+            st.caption("Dots are counties, colored by political leaning. This helps separate geographic clustering from the broader county-level relationship.")
+
+        st.subheader("3. Model summary")
+        st.write(
+            "The OLS table uses the selected X variable together with political leaning to summarize county-level relationships. "
+            "Treat this as a compact descriptive model."
         )
-        st.pyplot(fig, use_container_width=True)
-        plt.close(fig)
-
-    with right:
-        st.subheader("County scatter")
-
-        cep, pov, vote = load_county_inputs(cep_path, pov_path, vote_path)
-        county_df = (
-            cep[["county_fips", "cep_school_rate"]]
-            .merge(pov[["county_fips", "poverty_rate_children"]], on="county_fips", how="left")
-            .merge(vote[["county_fips", "dem_margin"]], on="county_fips", how="left")
-        )
-
-        x_opts = ["cep_school_rate", "dem_margin"]
-        y_opts = ["poverty_rate_children"]
-
-        x_var = st.sidebar.selectbox("Scatter X axis", x_opts, index=0, format_func=lambda v: label_for(v, COUNTY_VAR_LABELS))
-        y_var = st.sidebar.selectbox("Scatter Y axis", y_opts, index=0, format_func=lambda v: label_for(v, COUNTY_VAR_LABELS))
-
-        st.altair_chart(
-            altair_county_scatter(county_df, x=x_var, y=y_var, height=760),
-            use_container_width=True,
-        )
-
-        st.subheader("OLS table")
         ols_tbl = run_ols_table_county(county_df, y=y_var, x=x_var)
         st.dataframe(ols_tbl, use_container_width=True)
+
+    else:
+        left, right = st.columns([1.6, 1.0], gap="large")
+
+        with left:
+            st.subheader("County maps")
+            fig = county_maps_three_panels_matplotlib(
+                gdf_5070=gdf_state,
+                state_title=map_title,
+                simplify_tol_m=float(simplify_tol_m),
+            )
+            st.pyplot(fig, use_container_width=True)
+            plt.close(fig)
+
+        with right:
+            st.subheader("County scatter")
+            st.altair_chart(
+                altair_county_scatter(county_df, x=x_var, y=y_var, height=760),
+                use_container_width=True,
+            )
+
+            st.subheader("OLS table")
+            ols_tbl = run_ols_table_county(county_df, y=y_var, x=x_var)
+            st.dataframe(ols_tbl, use_container_width=True)
